@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Admin — Login</title>
+<style>
+:root {
+    --primary: #4f46e5; --primary-dark: #3730a3; --primary-light: #eef2ff;
+    --bg: #f0f2f5; --white: #fff; --border: #e5e7eb;
+    --text: #1a1a1a; --text2: #6b7280; --text3: #9ca3af;
+    --red: #ef4444; --red-light: #fef2f2;
+    --radius: 16px; --radius-sm: 10px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg); display:flex; align-items:center; justify-content:center;
+    min-height:100vh; color:var(--text);
+}
+.login-card {
+    background: var(--white); border-radius: var(--radius);
+    padding: 48px 40px 40px; width: 380px; max-width: 90vw;
+    box-shadow: var(--shadow); text-align: center;
+}
+.logo { font-size: 48px; margin-bottom: 12px; }
+h1 { font-size: 24px; font-weight: 800; margin-bottom: 4px; }
+.subtitle { color: var(--text2); font-size: 14px; margin-bottom: 32px; }
+form { text-align: left; }
+label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+input {
+    width: 100%; padding: 14px 16px; border: 2px solid var(--border);
+    border-radius: var(--radius-sm); font-size: 15px; outline: none;
+    transition: all 0.2s; background: var(--bg);
+}
+input:focus { border-color: var(--primary); background: var(--white); box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+.error-msg {
+    font-size: 13px; color: var(--red); margin-top: 12px; display: none;
+    background: var(--red-light); padding: 10px 14px; border-radius: var(--radius-sm);
+}
+.shake { animation: shake 0.4s ease; }
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(5px); }
+}
+button {
+    width: 100%; padding: 14px; border: none; border-radius: var(--radius-sm);
+    background: var(--primary); color: #fff; font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s; margin-top: 20px;
+}
+button:hover { background: var(--primary-dark); box-shadow: 0 4px 12px rgba(79,70,229,0.3); }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
+.spinner { display: inline-block; width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.footer { margin-top: 24px; font-size: 12px; color: var(--text3); }
+</style>
+</head>
+<body>
+<div class="login-card">
+    <div class="logo">🤖</div>
+    <h1>Agent Admin</h1>
+    <p class="subtitle">Kopi Agent Management Panel</p>
+    <form id="loginForm" onsubmit="return handleLogin(event)">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Enter admin password" autofocus>
+        <div class="error-msg" id="errorMsg">Incorrect password</div>
+        <button type="submit" id="loginBtn">Sign In</button>
+    </form>
+    <div class="footer">KOPI AI AGENT ☕</div>
+</div>
+<script>
+async function handleLogin(e) {
+    e.preventDefault();
+    const pw = document.getElementById('password').value.trim();
+    const btn = document.getElementById('loginBtn');
+    const err = document.getElementById('errorMsg');
+    if (!pw) { err.textContent = 'Please enter a password'; err.style.display = 'block'; return; }
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+    try {
+        const res = await fetch('/api/login', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({password: pw})
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            window.location.href = '/';
+        } else {
+            err.textContent = 'Incorrect password';
+            err.style.display = 'block';
+            document.querySelector('.login-card').classList.add('shake');
+            setTimeout(() => document.querySelector('.login-card').classList.remove('shake'), 500);
+        }
+    } catch(e) {
+        err.textContent = 'Network error. Please try again.';
+        err.style.display = 'block';
+    }
+    btn.disabled = false; btn.textContent = 'Sign In';
+    document.getElementById('password').value = '';
+}
+document.getElementById('password').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') handleLogin(e);
+});
+</script>
+</body>
+</html>

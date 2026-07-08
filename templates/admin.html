@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Admin</title>
+<style>
+:root {
+    --bg: #f8f9fa; --white: #ffffff; --border: #e5e7eb;
+    --text: #1a1a1a; --text2: #6b7280; --text3: #9ca3af;
+    --primary: #4f46e5; --primary-light: #eef2ff; --primary-dark: #3730a3;
+    --green: #10b981; --green-light: #ecfdf5; --green-dark: #059669;
+    --red: #ef4444; --red-light: #fef2f2;
+    --yellow: #f59e0b; --yellow-light: #fffbeb;
+    --blue: #3b82f6; --blue-light: #eff6ff;
+    --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
+
+/* ── Sidebar ── */
+.sidebar { position:fixed; left:0; top:0; bottom:0; width:240px; background:var(--white); border-right:1px solid var(--border); padding:24px 16px; z-index:100; display:flex; flex-direction:column; }
+.sidebar-logo { font-size:20px; font-weight:800; padding:0 8px 24px; display:flex; align-items:center; gap:10px; color:var(--text); }
+.sidebar-logo span { font-size:28px; }
+.sidebar-nav { flex:1; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:var(--radius-sm); cursor:pointer; font-size:14px; font-weight:600; color:var(--text2); transition:all 0.15s; margin-bottom:2px; }
+.nav-item:hover { background:var(--bg); color:var(--text); }
+.nav-item.active { background:var(--primary-light); color:var(--primary); }
+.nav-item .icon { font-size:18px; width:24px; text-align:center; }
+.sidebar-footer { padding:16px 8px; border-top:1px solid var(--border); }
+.sidebar-footer a { font-size:13px; color:var(--text3); text-decoration:none; cursor:pointer; }
+.sidebar-footer a:hover { color:var(--red); }
+
+/* ── Main Content ── */
+.main { margin-left:240px; padding:32px; min-height:100vh; }
+.page { display:none; animation:fadeIn 0.3s ease; }
+.page.active { display:block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── Header ── */
+.page-header { margin-bottom:28px; }
+.page-header h1 { font-size:28px; font-weight:800; color:var(--text); }
+.page-header p { color:var(--text2); font-size:14px; margin-top:4px; }
+
+/* ── Cards ── */
+.card { background:var(--white); border:1px solid var(--border); border-radius:var(--radius); padding:24px; box-shadow:var(--shadow); }
+
+/* ── Stats Grid ── */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:28px; }
+.stat-card { background:var(--white); border:1px solid var(--border); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); }
+.stat-card .stat-icon { font-size:24px; margin-bottom:8px; }
+.stat-card .stat-value { font-size:28px; font-weight:800; color:var(--text); }
+.stat-card .stat-label { font-size:12px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; }
+
+/* ── Profile Table ── */
+.table-card { overflow:hidden; }
+.table-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+.table-header h2 { font-size:18px; font-weight:800; }
+.btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:var(--radius-sm); font-size:13px; font-weight:700; cursor:pointer; border:none; transition:all 0.15s; }
+.btn-primary { background:var(--primary); color:#fff; }
+.btn-primary:hover { background:var(--primary-dark); box-shadow:0 2px 8px rgba(79,70,229,0.3); }
+.btn-success { background:var(--green); color:#fff; }
+.btn-success:hover { background:var(--green-dark); }
+.btn-danger { background:var(--red-light); color:var(--red); border:1px solid #fecaca; }
+.btn-danger:hover { background:var(--red); color:#fff; }
+.btn-ghost { background:transparent; color:var(--text2); border:1px solid var(--border); }
+.btn-ghost:hover { background:var(--bg); }
+.btn-sm { padding:6px 12px; font-size:12px; }
+.btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+table { width:100%; border-collapse:collapse; }
+th { text-align:left; padding:12px 16px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text3); border-bottom:1px solid var(--border); background:var(--bg); }
+td { padding:14px 16px; border-bottom:1px solid var(--border); font-size:14px; vertical-align:middle; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:#fafbfc; }
+.badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+.badge-green { background:var(--green-light); color:var(--green-dark); }
+.badge-red { background:var(--red-light); color:var(--red); }
+.badge-yellow { background:var(--yellow-light); color:#92400e; }
+.badge-blue { background:var(--blue-light); color:var(--blue); }
+.profile-name { font-weight:700; color:var(--text); display:flex; align-items:center; gap:8px; }
+.profile-name .default-tag { font-size:10px; background:var(--primary-light); color:var(--primary); padding:2px 6px; border-radius:4px; font-weight:700; }
+.action-btns { display:flex; gap:6px; }
+.empty-row td { text-align:center; padding:40px; color:var(--text3); font-size:14px; }
+
+/* ── Create Wizard Modal ── */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); backdrop-filter:blur(4px); z-index:200; display:none; align-items:center; justify-content:center; opacity:0; transition:opacity 0.3s; }
+.modal-overlay.show { display:flex; opacity:1; }
+.modal { background:var(--white); border-radius:16px; box-shadow:var(--shadow-lg); width:560px; max-height:90vh; overflow-y:auto; transform:scale(0.95); transition:transform 0.3s; }
+.modal-overlay.show .modal { transform:scale(1); }
+
+.modal-header { padding:28px 32px 0; text-align:center; }
+.modal-header .wizard-icon { font-size:48px; margin-bottom:12px; animation:bounce 1s ease infinite; }
+@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+.modal-header h2 { font-size:22px; font-weight:800; }
+.modal-header p { color:var(--text2); font-size:14px; margin-top:4px; }
+
+/* Steps indicator */
+.steps-bar { display:flex; justify-content:center; gap:8px; padding:20px 32px; }
+.step-dot { width:40px; height:4px; border-radius:2px; background:var(--border); transition:all 0.4s; }
+.step-dot.active { background:var(--primary); width:60px; }
+.step-dot.done { background:var(--green); }
+
+.modal-body { padding:0 32px 28px; }
+
+/* Step panels */
+.wizard-step { display:none; animation:slideIn 0.3s ease; }
+.wizard-step.active { display:block; }
+@keyframes slideIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+
+.form-group { margin-bottom:20px; }
+.form-label { display:block; font-size:13px; font-weight:700; color:var(--text); margin-bottom:6px; }
+.form-label .optional { color:var(--text3); font-weight:400; }
+.form-input { width:100%; padding:12px 14px; border:2px solid var(--border); border-radius:var(--radius-sm); font-size:14px; outline:none; transition:all 0.2s; background:var(--bg); }
+.form-input:focus { border-color:var(--primary); background:var(--white); box-shadow:0 0 0 3px rgba(79,70,229,0.1); }
+.form-input::placeholder { color:var(--text3); }
+.form-hint { font-size:12px; color:var(--text3); margin-top:4px; }
+.form-error { font-size:12px; color:var(--red); margin-top:4px; display:none; }
+
+.modal-footer { display:flex; justify-content:space-between; gap:12px; padding:0 32px 28px; }
+
+/* ── Log Output ── */
+.log-container { background:#1e1e2e; border-radius:var(--radius-sm); padding:16px; max-height:300px; overflow-y:auto; font-family:'SF Mono',Monaco,Consolas,monospace; font-size:13px; line-height:1.8; }
+.log-line { display:flex; gap:8px; opacity:0; animation:logAppear 0.3s ease forwards; }
+@keyframes logAppear { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+.log-line .log-icon { flex-shrink:0; }
+.log-line.step { color:#89b4fa; }
+.log-line.success { color:#a6e3a1; }
+.log-line.error { color:#f38ba8; }
+.log-line.warning { color:#f9e2af; }
+.log-line.info { color:#a6adc8; }
+.log-line.done { color:#cba6f7; font-weight:700; }
+
+/* ── Success Celebration ── */
+.success-screen { text-align:center; padding:20px 0; }
+.success-screen .check-circle { width:80px; height:80px; border-radius:50%; background:var(--green-light); display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:40px; animation:scaleIn 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes scaleIn { from{transform:scale(0)} to{transform:scale(1)} }
+.success-screen h3 { font-size:22px; font-weight:800; margin-bottom:8px; }
+.success-screen p { color:var(--text2); font-size:14px; margin-bottom:20px; }
+.success-info { background:var(--bg); border-radius:var(--radius-sm); padding:16px; text-align:left; margin-bottom:20px; }
+.success-info .info-row { display:flex; justify-content:space-between; padding:6px 0; font-size:13px; }
+.success-info .info-row .label { color:var(--text3); }
+.success-info .info-row .value { font-weight:700; }
+
+/* ── Toast ── */
+.toast-container { position:fixed; top:20px; right:20px; z-index:300; display:flex; flex-direction:column; gap:8px; }
+.toast { padding:12px 20px; border-radius:var(--radius-sm); font-size:13px; font-weight:600; box-shadow:var(--shadow-md); animation:toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards; display:flex; align-items:center; gap:8px; }
+@keyframes toastIn { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:translateX(0)} }
+@keyframes toastOut { to{opacity:0;transform:translateX(40px)} }
+.toast-success { background:var(--green-light); color:var(--green-dark); border:1px solid #a7f3d0; }
+.toast-error { background:var(--red-light); color:var(--red); border:1px solid #fecaca; }
+.toast-info { background:var(--blue-light); color:var(--blue); border:1px solid #bfdbfe; }
+
+/* ── Loading spinner ── */
+.spinner { width:20px; height:20px; border:3px solid var(--border); border-top-color:var(--primary); border-radius:50%; animation:spin 0.8s linear infinite; display:inline-block; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* ── Responsive ── */
+@media(max-width:768px) {
+    .sidebar { display:none; }
+    .main { margin-left:0; padding:16px; }
+    .stats-grid { grid-template-columns:1fr 1fr; }
+    .modal { width:95%; margin:16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <div class="sidebar-logo"><span>🤖</span> Agent Admin</div>
+    <nav class="sidebar-nav">
+        <div class="nav-item active" onclick="showPage('dashboard')"><span class="icon">📊</span> Dashboard</div>
+        <div class="nav-item" onclick="showPage('profiles')"><span class="icon">👥</span> Profiles</div>
+        <div class="nav-item" onclick="showPage('system')"><span class="icon">🖥️</span> System</div>
+    </nav>
+    <div class="sidebar-footer">
+        <a onclick="logout()">🚪 Logout</a>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="main">
+    <!-- Dashboard Page -->
+    <div id="page-dashboard" class="page active">
+        <div class="page-header">
+            <h1>Dashboard</h1>
+            <p>Monitor your agent instances and server resources</p>
+        </div>
+        <div class="stats-grid" id="statsGrid"></div>
+        <div class="card table-card">
+            <div class="table-header">
+                <h2>Active Profiles</h2>
+                <button class="btn btn-primary" onclick="openWizard()">➕ New Client</button>
+            </div>
+            <table>
+                <thead><tr><th>Profile</th><th>Model</th><th>PID</th><th>Gateway</th><th>Disk</th><th>Tokens Used</th><th>Created (SGT)</th><th>Actions</th></tr></thead>
+                <tbody id="profileTableBody"><tr class="empty-row"><td colspan="8"><div class="spinner"></div></td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Profiles Page (same content, different view focus) -->
+    <div id="page-profiles" class="page">
+        <div class="page-header">
+            <h1>Client Profiles</h1>
+            <p>Manage all agent instances — each profile is an isolated client</p>
+        </div>
+        <div style="margin-bottom:20px"><button class="btn btn-primary" onclick="openWizard()">➕ Create New Profile</button></div>
+        <div class="card table-card">
+            <table>
+                <thead><tr><th>Profile</th><th>Model</th><th>PID</th><th>Gateway</th><th>Disk</th><th>Tokens Used</th><th>Created (SGT)</th><th>Actions</th></tr></thead>
+                <tbody id="profileTableBody2"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- System Page -->
+    <div id="page-system" class="page">
+        <div class="page-header">
+            <h1>System Resources</h1>
+            <p>Server health and capacity planning</p>
+        </div>
+        <div class="stats-grid" id="systemStats"></div>
+        <div class="card" id="capacityCard" style="margin-top:16px"></div>
+    </div>
+</div>
+
+<!-- Create Wizard Modal -->
+<div class="modal-overlay" id="wizardModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="wizard-icon" id="wizardIcon">🚀</div>
+            <h2 id="wizardTitle">Create New Client</h2>
+            <p id="wizardSubtitle">Set up a new agent profile in minutes</p>
+        </div>
+        <div class="steps-bar" id="stepsBar">
+            <div class="step-dot active" data-step="1"></div>
+            <div class="step-dot" data-step="2"></div>
+            <div class="step-dot" data-step="3"></div>
+        </div>
+        <div class="modal-body">
+            <!-- Step 1: Input -->
+            <div class="wizard-step active" id="step1">
+                <div class="form-group">
+                    <label class="form-label">Profile Name</label>
+                    <input type="text" class="form-input" id="profileName" placeholder="e.g. client-bob" pattern="[a-z][a-z0-9_-]*">
+                    <div class="form-hint">Lowercase letters, numbers, hyphens. Starts with a letter.</div>
+                    <div class="form-error" id="nameError"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Telegram Bot Token <span class="optional">(optional)</span></label>
+                    <input type="text" class="form-input" id="tgToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+                    <div class="form-hint">Get from @BotFather on Telegram. Can be added later.</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description <span class="optional">(optional)</span></label>
+                    <input type="text" class="form-input" id="profileDesc" placeholder="e.g. Bob's personal AI assistant">
+                </div>
+            </div>
+
+            <!-- Step 2: Confirm & Create -->
+            <div class="wizard-step" id="step2">
+                <div style="text-align:center;padding:16px 0">
+                    <div style="font-size:48px;margin-bottom:16px">⚡</div>
+                    <h3 style="font-size:18px;margin-bottom:8px">Ready to Create</h3>
+                    <p style="color:var(--text2);font-size:14px;margin-bottom:20px" id="confirmSummary"></p>
+                    <div style="background:var(--bg);border-radius:var(--radius-sm);padding:16px;text-align:left;font-size:13px" id="confirmDetails"></div>
+                </div>
+            </div>
+
+            <!-- Step 3: Progress -->
+            <div class="wizard-step" id="step3">
+                <div class="log-container" id="logContainer"></div>
+            </div>
+        </div>
+        <div class="modal-footer" id="wizardFooter">
+            <button class="btn btn-ghost" id="wizardCancel" onclick="closeWizard()">Cancel</button>
+            <button class="btn btn-primary" id="wizardNext" onclick="wizardNext()">Next →</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+let currentStep = 1;
+let wizardData = {};
+
+// ── Navigation ──
+function showPage(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    document.querySelectorAll('.nav-item')[['dashboard','profiles','system'].indexOf(page)].classList.add('active');
+    if (page === 'dashboard' || page === 'profiles') loadProfiles();
+    if (page === 'system') loadSystem();
+}
+
+// ── Data Loading ──
+async function loadDashboard() {
+    try {
+        const [statsRes, profilesRes] = await Promise.all([fetch('/api/stats'), fetch('/api/profiles')]);
+        const stats = await statsRes.json();
+        const profiles = await profilesRes.json();
+        renderStats(stats);
+        renderProfiles(profiles, 'profileTableBody');
+    } catch(e) { showToast('Failed to load dashboard', 'error'); }
+}
+
+async function loadProfiles() {
+    try {
+        const res = await fetch('/api/profiles');
+        const profiles = await res.json();
+        renderProfiles(profiles, 'profileTableBody');
+        renderProfiles(profiles, 'profileTableBody2');
+    } catch(e) {}
+}
+
+async function loadSystem() {
+    try {
+        const res = await fetch('/api/stats');
+        const stats = await res.json();
+        renderSystemStats(stats);
+    } catch(e) {}
+}
+
+function renderStats(stats) {
+    document.getElementById('statsGrid').innerHTML = `
+        <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value">${stats.profile_count}</div><div class="stat-label">Active Profiles</div></div>
+        <div class="stat-card"><div class="stat-icon">💾</div><div class="stat-value">${stats.ram_available || 0}MB</div><div class="stat-label">Available RAM</div></div>
+        <div class="stat-card"><div class="stat-icon">💿</div><div class="stat-value">${((stats.disk_available||0)/1024).toFixed(1)}GB</div><div class="stat-label">Available Disk</div></div>
+        <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-value">${stats.max_profiles || '?'}</div><div class="stat-label">Max Capacity</div></div>
+    `;
+}
+
+function renderSystemStats(stats) {
+    const ramPct = stats.ram_total ? Math.round((stats.ram_used/stats.ram_total)*100) : 0;
+    const diskPct = stats.disk_total ? Math.round((stats.disk_used/stats.disk_total)*100) : 0;
+    document.getElementById('systemStats').innerHTML = `
+        <div class="stat-card"><div class="stat-icon">🖥️</div><div class="stat-value">${stats.cpu_cores} cores</div><div class="stat-label">CPU</div></div>
+        <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-value">${(stats.load?.toFixed(2) || 0)}</div><div class="stat-label">Load Average</div></div>
+        <div class="stat-card"><div class="stat-icon">💾</div><div class="stat-value">${stats.ram_used}/${stats.ram_total}MB</div><div class="stat-label">RAM (${ramPct}% used)</div></div>
+        <div class="stat-card"><div class="stat-icon">💿</div><div class="stat-value">${((stats.disk_used||0)/1024).toFixed(1)}/${((stats.disk_total||0)/1024).toFixed(1)}GB</div><div class="stat-label">Disk (${diskPct}% used)</div></div>
+    `;
+    document.getElementById('capacityCard').innerHTML = `
+        <h3 style="font-size:16px;font-weight:800;margin-bottom:12px">📋 Capacity Planning</h3>
+        <p style="font-size:14px;color:var(--text2);line-height:1.7">
+            Each profile uses ~300MB RAM for gateway + ~300MB disk.<br>
+            Available RAM: <strong>${stats.ram_available}MB</strong> → Can fit ~<strong>${stats.max_profiles}</strong> more profiles.<br>
+            Available Disk: <strong>${((stats.disk_available||0)/1024).toFixed(1)}GB</strong> → No disk concern.<br><br>
+            <span style="color:var(--green);font-weight:700">✅ Current load: ${(stats.load || 0).toFixed(2)} — Server is healthy.</span>
+        </p>
+    `;
+}
+
+function renderProfiles(profiles, tbodyId) {
+    const tbody = document.getElementById(tbodyId);
+    if (!profiles.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No profiles yet. Create your first client!</td></tr>'; return; }
+    tbody.innerHTML = profiles.map(p => {
+        const statusBadge = p.gateway === 'running'
+            ? '<span class="badge badge-green">● Running</span>'
+            : '<span class="badge badge-red">○ Stopped</span>';
+        const defaultTag = p.is_default ? '<span class="default-tag">DEFAULT</span>' : '';
+        const actions = p.is_default ? '' : `
+            <div class="action-btns">
+                ${p.gateway === 'running'
+                    ? '<button class="btn btn-ghost btn-sm" onclick="controlProfile(\'' + p.name + '\',\'stop\')">⏹ Stop</button><button class="btn btn-ghost btn-sm" onclick="controlProfile(\'' + p.name + '\',\'restart\')">🔄</button>'
+                    : '<button class="btn btn-success btn-sm" onclick="controlProfile(\'' + p.name + '\',\'start\')">▶ Start</button>'}
+                <button class="btn btn-danger btn-sm" onclick="deleteProfile(\'' + p.name + '\')">🗑️</button>
+            </div>`;
+        return '<tr>' +
+            '<td><div class="profile-name">' + defaultTag + ' ' + p.name + '</div></td>' +
+            '<td><span class="badge badge-blue">' + (p.model || '—') + '</span></td>' +
+            '<td style="font-family:monospace;font-size:12px">' + (p.pid || '—') + '</td>' +
+            '<td>' + statusBadge + '</td>' +
+            '<td>' + (p.disk || '—') + '</td>' +
+            '<td><span class="badge ' + (p.token_usage && p.token_usage !== '—' ? 'badge-blue' : '') + '" style="font-size:11px">' + (p.token_usage || '—') + '</span></td>' +
+            '<td style="color:var(--text3);font-size:12px">' + (p.created_sgt || p.created || '—') + '</td>' +
+            '<td>' + actions + '</td>' +
+        '</tr>';
+    }).join('');
+}
+
+// ── Profile Control ──
+async function controlProfile(name, action) {
+    try {
+        const res = await fetch('/api/profile/' + name + '/' + action, {method:'POST'});
+        const data = await res.json();
+        if (res.ok) { showToast(data.message, 'success'); setTimeout(loadProfiles, 1500); }
+        else showToast(data.error, 'error');
+    } catch(e) { showToast('Action failed', 'error'); }
+}
+
+async function deleteProfile(name) {
+    if (!confirm('Delete profile "' + name + '"? This cannot be undone.')) return;
+    try {
+        const res = await fetch('/api/profile/' + name, {method:'DELETE'});
+        const data = await res.json();
+        if (res.ok) { showToast(data.message, 'success'); loadProfiles(); }
+        else showToast(data.error, 'error');
+    } catch(e) { showToast('Delete failed', 'error'); }
+}
+
+// ── Wizard ──
+function openWizard() {
+    currentStep = 1; wizardData = {};
+    document.getElementById('profileName').value = '';
+    document.getElementById('tgToken').value = '';
+    document.getElementById('profileDesc').value = '';
+    document.getElementById('logContainer').innerHTML = '';
+    updateWizardUI();
+    document.getElementById('wizardModal').classList.add('show');
+}
+
+function closeWizard() {
+    document.getElementById('wizardModal').classList.remove('show');
+    loadProfiles();
+}
+
+function wizardNext() {
+    if (currentStep === 1) {
+        // Validate
+        const name = document.getElementById('profileName').value.trim().toLowerCase();
+        const err = document.getElementById('nameError');
+        if (!name || !/^[a-z][a-z0-9_-]{1,30}$/.test(name)) {
+            err.textContent = 'Invalid name. Use lowercase, numbers, hyphens (2-31 chars).';
+            err.style.display = 'block'; return;
+        }
+        err.style.display = 'none';
+        wizardData.name = name;
+        wizardData.tg_token = document.getElementById('tgToken').value.trim();
+        wizardData.description = document.getElementById('profileDesc').value.trim();
+
+        // Show confirm
+        document.getElementById('confirmSummary').innerHTML = 'Creating profile <strong>' + wizardData.name + '</strong>';
+        document.getElementById('confirmDetails').innerHTML =
+            '<div style="display:flex;flex-direction:column;gap:8px">' +
+                '<div><span style="color:var(--text3)">Profile:</span> <strong>' + wizardData.name + '</strong></div>' +
+                '<div><span style="color:var(--text3)">Telegram:</span> <strong>' + (wizardData.tg_token ? '✅ Bot token configured' : '⏭️ Skipped (add later)') + '</strong></div>' +
+                '<div><span style="color:var(--text3)">Description:</span> <strong>' + (wizardData.description || '—') + '</strong></div>' +
+                '<div><span style="color:var(--text3)">Steps:</span> Create dir → Configure → Copy skills → Install service → Start gateway</div>' +
+            '</div>';
+        currentStep = 2;
+    } else if (currentStep === 2) {
+        // Start creation
+        currentStep = 3;
+        startCreation();
+    }
+    updateWizardUI();
+}
+
+function updateWizardUI() {
+    // Update step dots
+    document.querySelectorAll('.step-dot').forEach((dot, i) => {
+        dot.classList.remove('active','done');
+        if (i + 1 === currentStep) dot.classList.add('active');
+        else if (i + 1 < currentStep) dot.classList.add('done');
+    });
+    // Show/hide steps
+    document.querySelectorAll('.wizard-step').forEach((s, i) => {
+        s.classList.toggle('active', i + 1 === currentStep);
+    });
+    // Update buttons
+    const footer = document.getElementById('wizardFooter');
+    const nextBtn = document.getElementById('wizardNext');
+    const cancelBtn = document.getElementById('wizardCancel');
+    const icon = document.getElementById('wizardIcon');
+    const title = document.getElementById('wizardTitle');
+    const subtitle = document.getElementById('wizardSubtitle');
+
+    if (currentStep === 1) {
+        nextBtn.textContent = 'Next →'; nextBtn.style.display = ''; nextBtn.disabled = false;
+        cancelBtn.textContent = 'Cancel'; cancelBtn.style.display = '';
+        icon.textContent = '🚀'; title.textContent = 'Create New Client'; subtitle.textContent = 'Set up a new agent profile in minutes';
+    } else if (currentStep === 2) {
+        nextBtn.textContent = '⚡ Create Now'; nextBtn.className = 'btn btn-success'; nextBtn.style.display = ''; nextBtn.disabled = false;
+        cancelBtn.textContent = '← Back'; cancelBtn.style.display = '';
+        icon.textContent = '📋'; title.textContent = 'Confirm Setup'; subtitle.textContent = 'Review and confirm';
+    } else if (currentStep === 3) {
+        nextBtn.style.display = 'none'; cancelBtn.style.display = 'none';
+        icon.textContent = '⚙️'; title.textContent = 'Setting Up...'; subtitle.textContent = 'Please wait while we configure everything';
+    }
+}
+
+async function startCreation() {
+    const logBox = document.getElementById('logContainer');
+    logBox.innerHTML = '';
+
+    try {
+        const res = await fetch('/api/profile/create', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(wizardData)
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            addLog('❌ ' + data.error, 'error');
+            finishWizard(false);
+            return;
+        }
+
+        // Stream logs via SSE
+        const evtSource = new EventSource('/api/profile/create/stream/' + data.task_id);
+        evtSource.onmessage = function(e) {
+            const entry = JSON.parse(e.data);
+            if (entry.done) {
+                evtSource.close();
+                finishWizard(entry.success, entry.profile);
+                return;
+            }
+            addLog(entry.msg, entry.status);
+        };
+        evtSource.onerror = function() {
+            evtSource.close();
+            addLog('⚠️ Connection lost. Check server logs.', 'error');
+            finishWizard(false);
+        };
+    } catch(e) {
+        addLog('❌ Network error: ' + e.message, 'error');
+        finishWizard(false);
+    }
+}
+
+function addLog(msg, status) {
+    const logBox = document.getElementById('logContainer');
+    const line = document.createElement('div');
+    line.className = 'log-line ' + (status || 'info');
+    line.innerHTML = '<span>' + msg + '</span>';
+    logBox.appendChild(line);
+    logBox.scrollTop = logBox.scrollHeight;
+}
+
+function finishWizard(success, profileName) {
+    const icon = document.getElementById('wizardIcon');
+    const title = document.getElementById('wizardTitle');
+    const subtitle = document.getElementById('wizardSubtitle');
+    const footer = document.getElementById('wizardFooter');
+
+    if (success) {
+        icon.textContent = '🎉'; icon.style.animation = 'none'; icon.style.fontSize = '48px';
+        title.textContent = 'All Done!';
+        subtitle.textContent = profileName + ' is ready to use';
+        footer.innerHTML = '<button class="btn btn-ghost" onclick="closeWizard()">Close</button>' +
+            '<button class="btn btn-primary" onclick="closeWizard()">View Profiles</button>';
+
+        // Confetti!
+        createConfetti();
+        showToast('🎉 Profile "' + profileName + '" created!', 'success');
+    } else {
+        icon.textContent = '❌'; icon.style.animation = 'none';
+        title.textContent = 'Setup Failed';
+        subtitle.textContent = 'Check the logs above for details';
+        footer.innerHTML = '<button class="btn btn-ghost" onclick="closeWizard()">Close</button>' +
+            '<button class="btn btn-primary" onclick="openWizard()">Try Again</button>';
+    }
+}
+
+function createConfetti() {
+    const colors = ['#4f46e5','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899'];
+    for (let i = 0; i < 60; i++) {
+        const c = document.createElement('div');
+        c.style.cssText = 'position:fixed;top:-10px;left:' + Math.random()*100 + '%;width:' + (6+Math.random()*8) + 'px;height:' + (6+Math.random()*8) + 'px;background:' + colors[Math.floor(Math.random()*colors.length)] + ';border-radius:' + (Math.random()>0.5?'50%':'2px') + ';z-index:9999;pointer-events:none;animation:confettiFall ' + (1.5+Math.random()*2) + 's ease-out forwards;animation-delay:' + Math.random()*0.5 + 's;';
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 4000);
+    }
+}
+
+// Add confetti keyframes
+const style = document.createElement('style');
+style.textContent = '@keyframes confettiFall{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}';
+document.head.appendChild(style);
+
+// ── Toast ──
+function showToast(msg, type='info') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.innerHTML = '<span>' + msg + '</span>';
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+// ── Auth ──
+async function logout() {
+    await fetch('/api/logout', {method:'POST'});
+    window.location.reload();
+}
+
+// ── Init ──
+loadDashboard();
+setInterval(loadProfiles, 10000); // Auto-refresh every 10s
+</script>
+</body>
+</html>

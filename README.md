@@ -1,81 +1,85 @@
 # Agent Admin Panel 🤖
 
-单服务器 Kopi Agent (Hermes) 管理后台。在单台服务器上部署和管理多个客户端实例。
+Multi-client management dashboard for **KOPI AI AGENT** instances on a single server.
+Deploy, monitor, and manage Hermes agent gateways through a clean web UI.
 
-## 功能
+## Features
 
-- **📊 仪表盘** — 实时监控服务器资源和所有 Gateway 状态
-- **🧙 创建向导** — 3 步创建新 Client Profile（自动配置 API Key + Telegram Bot）
-- **🔄 管理操作** — 启动/停止/重启任意 Gateway
-- **🗑️ 删除 Profile** — 完整清理（停止服务 + 删除目录）
-- **🔑 3 层 API Key 降级策略** — Auto-provision → Boss Key → .env
-- **⚡ SSE 实时日志流** — 创建进度实时展示
+- **📊 Dashboard** — Real-time server resource monitoring & all gateway statuses
+- **🧙 3-Step Creation Wizard** — Create new client profiles with automated API key provisioning + Telegram bot setup (SSE live logs)
+- **🔄 Lifecycle Management** — Start / Stop / Restart any gateway with one click
+- **🗑️ Clean Deletion** — Full cleanup: stop service + remove directory + systemd unit
+- **🔑 API Key Column** — Copy masked keys with one click; instant balance bar per key
+- **📦 3-Layer Key Degradation** — Auto-provision → Boss Key → `.env` fallback
+- **⚡ Real-time SSE Logs** — Live creation progress streamed to the browser
 
-## 架构
+## Architecture
 
 ```
-┌─────────────────┐     HTTP/8011      ┌──────────────────┐
-│   Browser        │ ◄──────────────► │  Flask Backend    │
-│   (admin.html)   │                   │  (admin_app.py)   │
-└─────────────────┘                   └────────┬─────────┘
-                                               │
-                    ┌──────────────────────────┼──────────────────────────┐
-                    │                          │                          │
-            ┌───────▼──────┐          ┌────────▼────────┐         ┌──────▼──────┐
-            │  systemd      │          │  hermes CLI     │         │  Kopi Proxy │
-            │  (gateway     │          │  (profile       │         │  (API Key   │
-            │   services)   │          │   management)   │         │   provision)│
-            └───────────────┘          └─────────────────┘         └─────────────┘
+┌──────────────┐    HTTP/8011     ┌────────────────┐
+│   Browser     │ ◄─────────────► │  Flask Backend  │
+│ (admin.html)  │                 │ (admin_app.py)  │
+└──────────────┘                 └────────┬───────┘
+                                          │
+         ┌────────────────────────────────┼─────────────────────────────┐
+         │                                │                             │
+  ┌──────▼──────┐                  ┌──────▼───────┐            ┌───────▼────────┐
+  │   systemd    │                  │  hermes CLI   │            │  KOPI Proxy    │
+  │  (gateway    │                  │  (profile     │            │  (auto-key     │
+  │   services)  │                  │   mgmt)       │            │   provision)   │
+  └─────────────┘                  └──────────────┘            └────────────────┘
 ```
 
-### 设计原则
+### Design Principles
 
-- **Profile 隔离** — 每个 Client 独立的 `~/.hermes/profiles/<name>/` 目录
-- **Systemd 托管** — 每个 Profile 独立的 `hermes-<name>-gateway.service`
-- **实时日志** — Server-Sent Events (SSE) 流式传输创建进度
-- **白底主题** — 简洁清晰的白色背景设计
+- **Profile Isolation** — Each client lives in `~/.hermes/profiles/<name>/` with its own `.env` and `config.yaml`
+- **Systemd Managed** — Each profile gets a dedicated `hermes-<name>-gateway.service`
+- **Real-time Logs** — SSE stream for profile creation progress
+- **Clean White Theme** — Minimal, distraction-free interface
 
-## 文件结构
+## File Structure
 
 ```
 agent-admin-panel/
-├── admin_app.py           # Flask 后端主程序
+├── admin_app.py           # Flask backend (all API + SSE + auth)
 ├── templates/
-│   ├── login.html         # 密码登录页面
-│   └── admin.html         # 主管理界面
-├── requirements.txt       # Python 依赖
-└── README.md              # 本文件
+│   ├── login.html         # Password login page
+│   └── admin.html         # Main admin dashboard
+├── requirements.txt       # flask + pytz
+└── README.md              # This file
 ```
 
-## 快速开始
+## Quick Start
 
-### 1. 安装依赖
+### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 配置环境变量
+### 2. Configure Environment
 
 ```bash
-export ADMIN_PASSWORD="your_password"    # 管理后台密码
-export HERMES_HOME="$HOME/.hermes"       # Hermes 主目录
-export BOSS_API_KEY="kp-agent-..."       # Boss API Key（回退用）
-export PORT=8011                         # 端口（可选，默认 8011）
+export ADMIN_PASSWORD="your_password"    # Admin panel login password
+export HERMES_HOME="$HOME/.hermes"       # Hermes home directory
+export BOSS_API_KEY="kopi-..."           # Boss API Key (fallback, optional)
+export PORT=8011                         # Server port (default: 8011)
 ```
 
-### 3. 启动
+### 3. Run
 
 ```bash
 python admin_app.py
 ```
 
-### 4. Systemd 自启动（推荐）
+Open `http://your-server:8011` in your browser.
+
+### 4. Systemd Auto-Start (Recommended)
 
 ```ini
 # /etc/systemd/system/agent-admin.service
 [Unit]
-Description=Kopi Agent Admin Panel
+Description=KOPI Agent Admin Panel
 After=network.target
 
 [Service]
@@ -85,6 +89,8 @@ ExecStart=/usr/bin/python3 /root/agent-admin/admin_app.py
 Restart=on-failure
 RestartSec=5
 Environment="PYTHONUNBUFFERED=1"
+Environment="ADMIN_PASSWORD=your_password"
+Environment="HERMES_HOME=/root/.hermes"
 
 [Install]
 WantedBy=multi-user.target
@@ -95,42 +101,42 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now agent-admin
 ```
 
-## API 接口
+## API Reference
 
-| 端点 | 方法 | 说明 |
-|------|------|------|
-| `/api/login` | POST | 登录 |
-| `/api/logout` | POST | 登出 |
-| `/api/stats` | GET | 服务器资源统计 |
-| `/api/profiles` | GET | 所有 Profile 列表 |
-| `/api/profile/create` | POST | 创建新 Profile |
-| `/api/profile/create/stream/<task_id>` | GET | SSE 实时日志流 |
-| `/api/profile/<name>/start` | POST | 启动 Gateway |
-| `/api/profile/<name>/stop` | POST | 停止 Gateway |
-| `/api/profile/<name>/restart` | POST | 重启 Gateway |
-| `/api/profile/<name>/status` | GET | 单个 Profile 状态 |
-| `/api/profile/<name>` | DELETE | 删除 Profile |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/login` | POST | Authenticate with password |
+| `/api/logout` | POST | End session |
+| `/api/stats` | GET | Server resource stats |
+| `/api/profiles` | GET | List all profiles |
+| `/api/profile/create` | POST | Create new profile (returns task_id) |
+| `/api/profile/create/stream/<task_id>` | GET | SSE live creation log |
+| `/api/profile/<name>/start` | POST | Start gateway |
+| `/api/profile/<name>/stop` | POST | Stop gateway |
+| `/api/profile/<name>/restart` | POST | Restart gateway |
+| `/api/profile/<name>/status` | GET | Single profile details + recent logs |
+| `/api/profile/<name>` | DELETE | Delete profile |
 
-## API Key 3 层降级策略
+## API Key 3-Layer Degradation Strategy
 
-1. **Layer 1: Auto-provision** — POST `/v1/auto-provision` → `/v1/provision`（2 次重试）
-2. **Layer 2: Boss Key 回退** — 使用 `BOSS_API_KEY` 验证并使用
-3. **Layer 3: Default .env 复制** — 从 `~/.hermes/.env` 读取 `KOPI_API_KEY`
+1. **Layer 1: Auto-provision** — `POST /v1/auto-provision/ready` on the KOPI Proxy (2 retries). Returns a fresh key with 5M quota.
+2. **Layer 2: Boss Key Fallback** — Uses `BOSS_API_KEY` env var if auto-provision fails.
+3. **Layer 3: Default `.env`** — Reads `KOPI_API_KEY` from `~/.hermes/.env` as last resort.
 
-## 容量规划
+## Capacity Planning
 
-- 每个 Profile 约 **300MB RAM** + **300MB Disk**
-- 7GB 服务器可稳定运行 **8-10 个 Profile**
-- 容量公式：`(ram_available - 1500) // 500`
+- ~**300MB RAM** + ~**300MB Disk** per profile
+- 7GB server: stable for **8–10 profiles**
+- Formula: `(ram_available - 1500) // 500`
 
-## 技术栈
+## Tech Stack
 
-- **后端**: Python 3 + Flask
-- **前端**: 原生 HTML/CSS/JS（无框架依赖）
-- **实时通信**: Server-Sent Events (SSE)
-- **进程管理**: Systemd
-- **认证**: Session Cookie
+- **Backend**: Python 3 + Flask
+- **Frontend**: Vanilla HTML/CSS/JS (zero framework dependencies)
+- **Real-time**: Server-Sent Events (SSE)
+- **Process Management**: Systemd
+- **Auth**: Session cookie
 
 ---
 
-*KOPI AI AGENT ☕ by Kopi Ai Agent Pte Ltd（新加坡）*
+*KOPI AI AGENT ☕ by Kopi Ai Agent Pte Ltd (Singapore)*

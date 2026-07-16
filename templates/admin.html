@@ -197,8 +197,8 @@ tr:hover td { background:#fafbfc; }
                 <button class="btn btn-primary" onclick="openWizard()">➕ New Client</button>
             </div>
             <table>
-                <thead><tr><th>Profile</th><th>Model</th><th>PID</th><th>Gateway</th><th>Disk</th><th>Tokens Used</th><th>Created (SGT)</th><th>Actions</th></tr></thead>
-                <tbody id="profileTableBody"><tr class="empty-row"><td colspan="8"><div class="spinner"></div></td></tr></tbody>
+                <thead><tr><th>Profile</th><th>Model</th><th>API Key</th><th>Balance</th><th>PID</th><th>Gateway</th><th>Disk</th><th>Tokens Used</th><th>Created (SGT)</th><th>Actions</th></tr></thead>
+                <tbody id="profileTableBody"><tr class="empty-row"><td colspan="10"><div class="spinner"></div></td></tr></tbody>
             </table>
         </div>
     </div>
@@ -212,7 +212,7 @@ tr:hover td { background:#fafbfc; }
         <div style="margin-bottom:20px"><button class="btn btn-primary" onclick="openWizard()">➕ Create New Profile</button></div>
         <div class="card table-card">
             <table>
-                <thead><tr><th>Profile</th><th>Model</th><th>PID</th><th>Gateway</th><th>Disk</th><th>Tokens Used</th><th>Created (SGT)</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Profile</th><th>Model</th><th>API Key</th><th>Balance</th><th>PID</th><th>Gateway</th><th>Disk</th><th>Tokens Used</th><th>Created (SGT)</th><th>Actions</th></tr></thead>
                 <tbody id="profileTableBody2"></tbody>
             </table>
         </div>
@@ -360,12 +360,35 @@ function renderSystemStats(stats) {
 
 function renderProfiles(profiles, tbodyId) {
     const tbody = document.getElementById(tbodyId);
-    if (!profiles.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No profiles yet. Create your first client!</td></tr>'; return; }
+    if (!profiles.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="10">No profiles yet. Create your first client!</td></tr>'; return; }
     tbody.innerHTML = profiles.map(p => {
         const statusBadge = p.gateway === 'running'
             ? '<span class="badge badge-green">● Running</span>'
             : '<span class="badge badge-red">○ Stopped</span>';
         const defaultTag = p.is_default ? '<span class="default-tag">DEFAULT</span>' : '';
+
+        // API Key (masked + click-to-copy)
+        let apiKeyHtml = '<span style="color:var(--text3)">—</span>';
+        if (p.api_key) {
+            const masked = p.key_prefix || (p.api_key.substring(0, 8) + '...' + p.api_key.slice(-4));
+            apiKeyHtml = '<span style="cursor:pointer;font-family:monospace;font-size:12px;color:var(--primary)" onclick="copyApiKey(this)" title="Click to copy" data-key="' + p.api_key.replace(/"/g, '&quot;') + '">' + masked + '</span>';
+        }
+
+        // Balance bar
+        let balanceHtml = '<span style="color:var(--text3)">—</span>';
+        if (p.token_remaining_fmt) {
+            const barPct = Math.min(p.token_percentage || 0, 100);
+            const barColor = barPct > 80 ? 'var(--red)' : barPct > 50 ? 'var(--yellow)' : 'var(--green)';
+            balanceHtml = `<div style="display:flex;align-items:center;gap:6px">
+                <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+                    <div style="height:100%;width:${barPct}%;background:${barColor};border-radius:3px;transition:width 0.3s"></div>
+                </div>
+                <span style="font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap">${p.token_remaining_fmt} left</span>
+            </div>`;
+        } else if (p.token_usage && p.token_usage !== '—') {
+            balanceHtml = '<span style="color:var(--text3);font-size:11px">No limit data</span>';
+        }
+
         const actions = p.is_default ? '' : `
             <div class="action-btns">
                 ${p.gateway === 'running'
@@ -376,6 +399,8 @@ function renderProfiles(profiles, tbodyId) {
         return '<tr>' +
             '<td><div class="profile-name">' + defaultTag + ' ' + p.name + '</div></td>' +
             '<td><span class="badge badge-blue">' + (p.model || '—') + '</span></td>' +
+            '<td>' + apiKeyHtml + '</td>' +
+            '<td style="min-width:180px">' + balanceHtml + '</td>' +
             '<td style="font-family:monospace;font-size:12px">' + (p.pid || '—') + '</td>' +
             '<td>' + statusBadge + '</td>' +
             '<td>' + (p.disk || '—') + '</td>' +
@@ -384,6 +409,21 @@ function renderProfiles(profiles, tbodyId) {
             '<td>' + actions + '</td>' +
         '</tr>';
     }).join('');
+}
+
+// Clipboard helper — reads key from data-key attribute
+function copyApiKey(el) {
+    const key = el.dataset.key;
+    if (!key) return;
+    navigator.clipboard.writeText(key).then(() => {
+        showToast('📋 Key copied to clipboard', 'success');
+    }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = key; ta.style.position='fixed'; ta.style.opacity='0';
+        document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+        showToast('📋 Key copied', 'success');
+    });
 }
 
 // ── Profile Control ──

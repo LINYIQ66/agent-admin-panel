@@ -50,6 +50,8 @@ HERMES_CLI = os.environ.get(
     "HERMES_CLI",
     "/usr/local/lib/hermes-agent/venv/bin/hermes",
 )
+# ⚠️ BOSS_API_KEY — Read from environment ONLY.
+# NEVER hardcode a key here. If deploying, set via systemd Environment= or .env.
 BOSS_API_KEY = os.environ.get("BOSS_API_KEY", "")
 KOPI_PROXY_URL = os.environ.get(
     "KOPI_PROXY_URL", "https://kopiaiagent.com"
@@ -133,6 +135,9 @@ def get_profile_status(name):
 
     # Token usage
     token_usage = "—"
+    token_remaining_fmt = ""
+    token_percentage = 0.0
+    key_prefix = ""
     api_key = ""
     if env_path.exists():
         for line in env_path.read_text().splitlines():
@@ -140,7 +145,6 @@ def get_profile_status(name):
                 api_key = line.split("=", 1)[1].strip()
                 break
     if api_key:
-        # Try to get token usage from proxy
         t_out, _, t_rc = run_cmd(
             f'curl -s -o /dev/null -w "%{{http_code}}" '
             f'-H "Authorization: Bearer {api_key}" '
@@ -154,9 +158,21 @@ def get_profile_status(name):
             if usage_resp:
                 try:
                     data = json.loads(usage_resp)
-                    used = data.get("total_tokens", data.get("usage", 0))
-                    token_usage = f"{int(used) // 1000}K" if used else "—"
-                except (json.JSONDecodeError, ValueError):
+                    used = int(data.get("token_used", 0))
+                    limit = int(data.get("token_limit", 0))
+                    remaining = int(data.get("token_remaining", 0))
+                    pct = float(data.get("percentage_used", 0.0))
+                    key_prefix = data.get("key_prefix", "")
+                    token_percentage = pct
+                    if limit > 0:
+                        used_fmt = f"{used // 1000}K" if used >= 1000 else str(used)
+                        limit_fmt = f"{limit // 1000}K" if limit >= 1000 else str(limit)
+                        rem_fmt = f"{remaining // 1000}K" if remaining >= 1000 else str(remaining)
+                        token_usage = f"{used_fmt} / {limit_fmt}"
+                        token_remaining_fmt = rem_fmt
+                    else:
+                        token_usage = f"{used} tokens" if used else "—"
+                except (json.JSONDecodeError, ValueError, TypeError):
                     pass
 
     # Created time
@@ -193,6 +209,10 @@ def get_profile_status(name):
         "disk": disk,
         "pid": pid,
         "token_usage": token_usage,
+        "token_remaining_fmt": token_remaining_fmt,
+        "token_percentage": token_percentage,
+        "key_prefix": key_prefix,
+        "api_key": api_key if api_key else "",
         "created_sgt": created,
         "tg_username": name,
         "has_tg_token": has_tg_token,
@@ -469,12 +489,12 @@ def _provision_api_key(log):
     """
     kopi_api_key = None
 
-    # Layer 1: Auto-provision
+    # Layer 1: Auto-provision via Kopi Proxy (2 retries, direct endpoint)
     log("🔑 Attempting auto-provision...", "step")
     for attempt in range(1, 3):
         log(f"  Auto-provision attempt {attempt}/2...", "info")
         auto_out, auto_err, auto_rc = run_cmd(
-            f'curl -s -X POST {KOPI_PROXY_URL}/v1/auto-provision '
+            f'curl -s -X POST {KOPI_PROXY_URL}/v1/auto-provision/ready '
             f'-H "Content-Type: application/json" '
             f'-d \'{{}}\'',
             timeout=15,
@@ -482,52 +502,20 @@ def _provision_api_key(log):
         if auto_rc == 0 and auto_out:
             try:
                 prov_data = json.loads(auto_out)
-                provision_token = prov_data.get("provision_token") or prov_data.get(
-                    "token"
-                )
-                if provision_token and len(str(provision_token)) > 16:
-                    # Exchange token for key
-                    key_out, key_err, key_rc = run_cmd(
-                        f'curl -s -X POST {KOPI_PROXY_URL}/v1/provision '
-                        f'-H "Content-Type: application/json" '
-                        f'-d \'{{"token": "{provision_token}"}}\'',
-                        timeout=15,
+                kopi_api_key = prov_data.get("api_key")
+                if kopi_api_key and len(str(kopi_api_key)) >= 40:
+                    log(
+                        f"✅ API key provisioned: "
+                        f"{kopi_api_key[:20]}... (quota: {prov_data.get('quota_display', '?')})",
+                        "success",
                     )
-                    if key_rc == 0 and key_out:
-                        try:
-                            key_data = json.loads(key_out)
-                            kopi_api_key = (
-                                key_data.get("api_key")
-                                or key_data.get("key")
-                                or key_data.get("apiKey")
-                            )
-                            if kopi_api_key and len(str(kopi_api_key)) >= 40:
-                                # Verify key
-                                verify_out, _, verify_rc = run_cmd(
-                                    f'curl -s -o /dev/null -w "%{{http_code}}" '
-                                    f'-H "Authorization: Bearer {kopi_api_key}" '
-                                    f"{KOPI_PROXY_URL}/v1/models",
-                                    timeout=10,
-                                )
-                                if verify_rc == 0 and verify_out == "200":
-                                    log(
-                                        f"✅ API key provisioned & verified: "
-                                        f"{kopi_api_key[:20]}... (len={len(kopi_api_key)})",
-                                        "success",
-                                    )
-                                    return kopi_api_key
-                                log(
-                                    f"  ❌ Key verification failed (HTTP {verify_out})",
-                                    "warning",
-                                )
-                            else:
-                                log(
-                                    f"  ❌ Key too short ({len(kopi_api_key or '')} chars)",
-                                    "warning",
-                                )
-                        except (json.JSONDecodeError, TypeError):
-                            log(f"  ❌ Failed to parse key response", "warning")
-            except (json.JSONDecodeError, TypeError):
+                    return kopi_api_key
+                else:
+                    log(
+                        f"  ❌ Key too short ({len(kopi_api_key or '')} chars)",
+                        "warning",
+                    )
+            except json.JSONDecodeError:
                 log(f"  ❌ Failed to parse provision response", "warning")
 
         if attempt < 2:
